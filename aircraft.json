@@ -1,0 +1,17 @@
+[
+    {
+        "id": 0,
+        "name": "F/A-18C Hornet",
+        "alias": "F18"
+    },
+    {
+        "id": 1,
+        "name": "F-14B Tomcat",
+        "alias": "F14"
+    },
+    {
+        "id": 2,
+        "name": "TF-51D Mustang",
+        "alias": "TF51D"
+    }
+]

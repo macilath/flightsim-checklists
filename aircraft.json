@@ -12,6 +12,11 @@
     {
         "id": 2,
         "name": "TF-51D Mustang",
-        "alias": "TF51D"
+        "alias": "Mustang"
+    },
+    {
+        "id": 3,
+        "name": "F-15C Eagle",
+        "alias": "F15"
     }
 ]

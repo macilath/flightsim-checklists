@@ -1,105 +1,75 @@
 package aircraft
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"sort"
-	"sync"
+	"checklists/database"
+	"context"
+	"database/sql"
+	"time"
 )
 
-var aircraftMap = struct {
-	sync.RWMutex
-	m map[int]Aircraft
-}{m: make(map[int]Aircraft)}
+func getAircraftByID(aircraftID int) (*Aircraft, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
-func init() {
-	fmt.Println("Loading aircraft..")
-	acMap, err := loadAircraftMap()
-	aircraftMap.m = acMap
-	if err != nil {
-		log.Fatal(err)
+	result := database.DbConn.QueryRowContext(ctx, `SELECT id, name, alias FROM aircraft WHERE id = $1`, aircraftID)
+	aircraft := &Aircraft{}
+	err := result.Scan(&aircraft.ID, &aircraft.Name, &aircraft.ShortName)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
-	fmt.Printf("%d aircraft loaded...", len(aircraftMap.m))
+	return aircraft, nil
 }
 
-func loadAircraftMap() (map[int]Aircraft, error) {
-	fileName := "aircraft.json"
-	_, err := os.Stat(fileName)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("File [%s] does not exist", fileName)
-	}
-
-	file, _ := ioutil.ReadFile(fileName)
-	aircraftList := make([]Aircraft, 0)
-	err = json.Unmarshal([]byte(file), &aircraftList)
+func removeAircraft(aircraftID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_, err := database.DbConn.ExecContext(ctx, `DELETE FROM aircraft WHERE id = $1`, aircraftID)
 	if err != nil {
-		log.Fatal(err)
-	}
-	aircraftMap := make(map[int]Aircraft)
-	for i := 0; i < len(aircraftList); i++ {
-		aircraftMap[aircraftList[i].ID] = aircraftList[i]
-	}
-	return aircraftMap, nil
-}
-
-func getAircraftByID(aircraftID int) *Aircraft {
-	aircraftMap.RLock()
-	defer aircraftMap.RUnlock()
-	if aircraft, ok := aircraftMap.m[aircraftID]; ok {
-		return &aircraft
+		return err
 	}
 	return nil
 }
 
-func removeAircraft(aircraftID int) {
-	aircraftMap.Lock()
-	defer aircraftMap.Unlock()
-	delete(aircraftMap.m, aircraftID)
-}
-
-func getAircraftList() []Aircraft {
-	aircraftMap.RLock()
-	aircraft := make([]Aircraft, 0, len(aircraftMap.m))
-	for _, value := range aircraftMap.m {
-		aircraft = append(aircraft, value)
+func getAircraftList() ([]Aircraft, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	results, err := database.DbConn.QueryContext(ctx, `SELECT id, name, alias FROM aircraft`)
+	if err != nil {
+		return nil, err
 	}
-	aircraftMap.RUnlock()
-	return aircraft
-}
-
-func getAircraftIDs() []int {
-	aircraftMap.RLock()
-	aircraftIDs := []int{}
-	for key := range aircraftMap.m {
-		aircraftIDs = append(aircraftIDs, key)
+	defer results.Close()
+	allAircraft := make([]Aircraft, 0)
+	for results.Next() {
+		var aircraft Aircraft
+		results.Scan(&aircraft.ID, &aircraft.Name, &aircraft.ShortName)
+		allAircraft = append(allAircraft, aircraft)
 	}
-	aircraftMap.Unlock()
-	sort.Ints(aircraftIDs)
-	return aircraftIDs
+	return allAircraft, nil
 }
 
-func getNextAircraftID() int {
-	aircraftIDs := getAircraftIDs()
-	return aircraftIDs[len(aircraftIDs)-1] + 1
-}
-
-func addOrUpdateAircraft(aircraft Aircraft) (int, error) {
-	aircraftID := -1
-	if aircraft.ID > 0 {
-		oldAircraft := getAircraftByID(aircraft.ID)
-		if oldAircraft == nil {
-			return 0, fmt.Errorf("Aircraft [%d] does not exist", aircraft.ID)
-		}
-		aircraftID = oldAircraft.ID
-	} else {
-		aircraftID = getNextAircraftID()
-		aircraft.ID = aircraftID
+func addAircraft(aircraft Aircraft) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	var retId int // Assumption that this is the most recent Id - if col is not set to autoincrement it may not be
+	err := database.DbConn.QueryRowContext(ctx, `INSERT INTO aircraft (id, name, alias) VALUES ($1, $2, $3) RETURNING id`, aircraft.ID, aircraft.Name, aircraft.ShortName).Scan(&retId)
+	if err != nil {
+		return 0, err
 	}
-	aircraftMap.Lock()
-	aircraftMap.m[aircraftID] = aircraft
-	aircraftMap.Unlock()
-	return aircraftID, nil
+
+	if err != nil {
+		return 0, nil
+	}
+	return int(retId), nil
+}
+
+func updateAircraft(aircraft Aircraft) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_, err := database.DbConn.ExecContext(ctx, `UPDATE aircraft SET id = $1, name = $2, alias = $3 WHERE id = $1`, aircraft.ID, aircraft.Name, aircraft.ShortName)
+	if err != nil {
+		return err
+	}
+	return nil
 }

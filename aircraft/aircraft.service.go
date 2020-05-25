@@ -22,7 +22,11 @@ func SetupRoutes(apiPath string) {
 func allAircraftHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		allAircraft := getAircraftList()
+		allAircraft, err := getAircraftList()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		acJSON, err := json.Marshal(allAircraft)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -42,19 +46,18 @@ func allAircraftHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if newAircraft.ID != 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		_, err = addOrUpdateAircraft(newAircraft)
+		aircraftID, err := addAircraft(newAircraft)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(fmt.Sprintf(`{"aircraftId":%d}`, aircraftID)))
 		return
 	case http.MethodOptions:
 		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -66,9 +69,12 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	aircraft := getAircraftByID(aircraftID)
+	aircraft, err := getAircraftByID(aircraftID)
 	if aircraft == nil {
 		w.WriteHeader(http.StatusNotFound)
+		return
+	} else if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -99,11 +105,12 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		addOrUpdateAircraft(changedAC)
+		updateAircraft(changedAC)
 		w.WriteHeader(http.StatusOK)
 		return
 	case http.MethodDelete:
 		removeAircraft(aircraftID)
+		w.WriteHeader(http.StatusOK)
 		return
 	case http.MethodOptions:
 		return

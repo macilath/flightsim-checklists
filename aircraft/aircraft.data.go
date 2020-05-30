@@ -4,6 +4,8 @@ import (
 	"checklists/database"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -72,4 +74,43 @@ func updateAircraft(aircraft Aircraft) error {
 		return err
 	}
 	return nil
+}
+
+func getChecklistsForAircraft(aircraftID int) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	results, err := database.DbConn.QueryContext(ctx, `SELECT title FROM checklist WHERE aircraft_id = $1`, aircraftID)
+	if err != nil {
+		return nil, err
+	}
+	defer results.Close()
+	checklists := make([]string, 0)
+	for results.Next() {
+		var clName string
+		results.Scan(&clName)
+		checklists = append(checklists, clName)
+	}
+	return checklists, nil
+}
+
+func getChecklistDetailByIDs(aircraftID int, checklistID int) (Checklist, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	result := database.DbConn.QueryRowContext(ctx, `SELECT title, items->>'items' AS items FROM checklist WHERE aircraft_id = $1 AND id = $2`, aircraftID, checklistID)
+	type dbChecklist struct {
+		Items string // Comes as a stringified JSON
+	}
+
+	checkListDetail := Checklist{}
+	checklist := dbChecklist{}
+	err := result.Scan(&checkListDetail.Title, &checklist.Items)
+	if err != nil {
+		fmt.Println(err)
+		return Checklist{}, err
+	}
+	err = json.Unmarshal([]byte(checklist.Items), &checkListDetail.Items)
+	if err != nil {
+		return Checklist{}, err
+	}
+	return checkListDetail, nil
 }

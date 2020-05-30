@@ -15,8 +15,10 @@ const aircraftBaseRoutePath = "aircraft"
 func SetupRoutes(apiPath string) {
 	handleAllAircraft := http.HandlerFunc(allAircraftHandler)
 	handleAircraft := http.HandlerFunc(singleAircraftHandler)
+	//handleChecklistsForAircraft := http.HandlerFunc(checklistsHandler)
 	http.Handle(fmt.Sprintf("%s/%s", apiPath, aircraftBaseRoutePath), cors.Middleware(handleAllAircraft))
 	http.Handle(fmt.Sprintf("%s/%s/", apiPath, aircraftBaseRoutePath), cors.Middleware(handleAircraft))
+	//http.Handle(fmt.Sprintf("%s/%s/checklists", apiPath, aircraftBaseRoutePath, cors.Middleware(handleChecklistsForAircraft)))
 }
 
 func allAircraftHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +71,7 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// First load the aircraft metadata
 	aircraft, err := getAircraftByID(aircraftID)
 	if aircraft == nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -78,9 +81,31 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load what checklist(s) are available - just the names, though
+	// items := []string{
+	// 	"PARKING BRAKE - SET",
+	// 	"ANTI-SKID - ON",
+	// 	"MASTER ARM - SAFE",
+	// 	"WING FOLD - MATCH",
+	// 	"BATTERY - ON",
+	// 	"BRAKE PRESSURE - 3000",
+	// 	"FIRE TEST A - PERFORM",
+	// 	"FIRE TEST B - PERFORM",
+	// 	"APU - START"}
+	// fakeChecklist := Checklist{Title: "PRE-START CHECKLIST", Items: items}
+
 	// Switch for CRUD
 	switch r.Method {
 	case http.MethodGet:
+		// aircraft.Checklists = []string{fakeChecklist.Title}
+		checklists, err := getChecklistsForAircraft(aircraft.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		checkMe, err := getChecklistDetailByIDs(0, 1)
+		fmt.Println(len(checkMe.Items))
+		aircraft.Checklists = checklists
 		aircraftJSON, err := json.Marshal(aircraft)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -118,3 +143,7 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	}
 }
+
+// func checklistsHandler(w http.ResponseWriter, r *http.Request) {
+
+// }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -54,7 +53,7 @@ func getAircraftList() ([]Aircraft, error) {
 func addAircraft(aircraft Aircraft) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	var retId int // Assumption that this is the most recent Id - if col is not set to autoincrement it may not be
+	var retID int // Assumption that this is the most recent Id - if col is not set to autoincrement it may not be
 	err := database.DbConn.QueryRowContext(ctx, `INSERT INTO aircraft (id, name, alias) VALUES ($1, $2, $3) RETURNING id`, aircraft.ID, aircraft.Name, aircraft.ShortName).Scan(&retId)
 	if err != nil {
 		return 0, err
@@ -63,7 +62,7 @@ func addAircraft(aircraft Aircraft) (int, error) {
 	if err != nil {
 		return 0, nil
 	}
-	return int(retId), nil
+	return int(retID), nil
 }
 
 func updateAircraft(aircraft Aircraft) error {
@@ -93,10 +92,11 @@ func getChecklistsForAircraft(aircraftID int) ([]string, error) {
 	return checklists, nil
 }
 
-func getChecklistDetailByIDs(aircraftID int, checklistID int) (Checklist, error) {
+func getChecklistDetailByID(checklistID int) (Checklist, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	result := database.DbConn.QueryRowContext(ctx, `SELECT title, items->>'items' AS items FROM checklist WHERE aircraft_id = $1 AND id = $2`, aircraftID, checklistID)
+	result := database.DbConn.QueryRowContext(ctx, `SELECT title, items FROM checklist WHERE id = $1`, checklistID)
+
 	type dbChecklist struct {
 		Items string // Comes as a stringified JSON
 	}
@@ -105,12 +105,30 @@ func getChecklistDetailByIDs(aircraftID int, checklistID int) (Checklist, error)
 	checklist := dbChecklist{}
 	err := result.Scan(&checkListDetail.Title, &checklist.Items)
 	if err != nil {
-		fmt.Println(err)
 		return Checklist{}, err
 	}
 	err = json.Unmarshal([]byte(checklist.Items), &checkListDetail.Items)
+
 	if err != nil {
 		return Checklist{}, err
 	}
 	return checkListDetail, nil
+}
+
+func addChecklist(checklist Checklist) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	// pack items into its own object
+	items, err := json.Marshal(checklist.Items)
+
+	var retID int
+	err = database.DbConn.QueryRowContext(ctx, `INSERT INTO checklist (title, items, aircraft_id) VALUES ($1, $2, $3) RETURNING id`, checklist.Title, items, 0).Scan(&retID)
+	if err != nil {
+		return 0, err
+	}
+
+	if err != nil {
+		return 0, nil
+	}
+	return int(retID), nil
 }

@@ -15,10 +15,12 @@ const aircraftBaseRoutePath = "aircraft"
 func SetupRoutes(apiPath string) {
 	handleAllAircraft := http.HandlerFunc(allAircraftHandler)
 	handleAircraft := http.HandlerFunc(singleAircraftHandler)
-	//handleChecklistsForAircraft := http.HandlerFunc(checklistsHandler)
+	handleChecklists := http.HandlerFunc(checklistsHandler)
+	handleChecklistForAircraft := http.HandlerFunc(checklistHandler)
 	http.Handle(fmt.Sprintf("%s/%s", apiPath, aircraftBaseRoutePath), cors.Middleware(handleAllAircraft))
 	http.Handle(fmt.Sprintf("%s/%s/", apiPath, aircraftBaseRoutePath), cors.Middleware(handleAircraft))
-	//http.Handle(fmt.Sprintf("%s/%s/checklists", apiPath, aircraftBaseRoutePath, cors.Middleware(handleChecklistsForAircraft)))
+	http.Handle(fmt.Sprintf("%s/%s", apiPath, "checklists"), cors.Middleware(handleChecklists))
+	http.Handle(fmt.Sprintf("%s/%s/", apiPath, "checklists"), cors.Middleware(handleChecklistForAircraft))
 }
 
 func allAircraftHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,8 +66,9 @@ func allAircraftHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
-	urlPath := strings.Split(r.URL.Path, "aircraft/")
+	urlPath := strings.Split(r.URL.Path, "/")
 	aircraftID, err := strconv.Atoi(urlPath[len(urlPath)-1])
+
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -81,19 +84,6 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load what checklist(s) are available - just the names, though
-	// items := []string{
-	// 	"PARKING BRAKE - SET",
-	// 	"ANTI-SKID - ON",
-	// 	"MASTER ARM - SAFE",
-	// 	"WING FOLD - MATCH",
-	// 	"BATTERY - ON",
-	// 	"BRAKE PRESSURE - 3000",
-	// 	"FIRE TEST A - PERFORM",
-	// 	"FIRE TEST B - PERFORM",
-	// 	"APU - START"}
-	// fakeChecklist := Checklist{Title: "PRE-START CHECKLIST", Items: items}
-
 	// Switch for CRUD
 	switch r.Method {
 	case http.MethodGet:
@@ -103,8 +93,7 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		checkMe, err := getChecklistDetailByIDs(0, 1)
-		fmt.Println(len(checkMe.Items))
+
 		aircraft.Checklists = checklists
 		aircraftJSON, err := json.Marshal(aircraft)
 		if err != nil {
@@ -144,6 +133,57 @@ func singleAircraftHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func checklistsHandler(w http.ResponseWriter, r *http.Request) {
+func checklistHandler(w http.ResponseWriter, r *http.Request) {
+	checklistPath := strings.Split(r.URL.Path, "checklists/")
+	checklistID, err := strconv.Atoi(checklistPath[len(checklistPath)-1])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
-// }
+	switch r.Method {
+	case http.MethodGet:
+		checklistData, err := getChecklistDetailByID(checklistID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		ckJSON, err := json.Marshal(checklistData)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(ckJSON)
+		return
+	}
+
+}
+
+func checklistsHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		var newChecklist Checklist
+		requestBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(requestBody, &newChecklist)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		_, err = addChecklist(newChecklist)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		return
+	default:
+		w.WriteHeader(http.StatusNotImplemented)
+		return
+	}
+}

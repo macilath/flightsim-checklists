@@ -140,3 +140,16 @@ func addChecklist(checklist Checklist) (int, error) {
 	}
 	return int(retID), nil
 }
+
+func updateChecklist(id int, content Checklist) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	items, err := json.Marshal(content.Items)
+	if err != nil {
+		return err
+	}
+	_, err = database.DbConn.ExecContext(ctx, `UPDATE checklist SET title = $1, items=$2, aircraft_id=$3 WHERE id=$4`, content.Title, items, content.AircraftID, id)
+
+	return err
+}

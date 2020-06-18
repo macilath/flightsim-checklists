@@ -144,6 +144,10 @@ func checklistHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		checklistData, err := getChecklistDetailByID(checklistID)
+		if checklistData == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -156,6 +160,38 @@ func checklistHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(ckJSON)
+		return
+	case http.MethodPut:
+		checklistData, err := getChecklistDetailByID(checklistID)
+		if checklistData == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		var updatedChecklist Checklist
+		requestBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(requestBody, &updatedChecklist)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		err = updateChecklist(checklistID, updatedChecklist)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	default:
+		w.WriteHeader(http.StatusNotImplemented)
 		return
 	}
 

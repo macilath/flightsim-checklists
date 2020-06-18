@@ -54,7 +54,12 @@ func addAircraft(aircraft Aircraft) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	var retID int // Assumption that this is the most recent Id - if col is not set to autoincrement it may not be
-	err := database.DbConn.QueryRowContext(ctx, `INSERT INTO aircraft (id, name, alias) VALUES ($1, $2, $3) RETURNING id`, aircraft.ID, aircraft.Name, aircraft.ShortName).Scan(&retId)
+	err := database.DbConn.QueryRowContext(ctx,
+		`INSERT INTO aircraft (id, name, alias) VALUES ($1, $2, $3) RETURNING id`,
+		aircraft.ID,
+		aircraft.Name,
+		aircraft.ShortName,
+	).Scan(&retID)
 	if err != nil {
 		return 0, err
 	}
@@ -75,27 +80,30 @@ func updateAircraft(aircraft Aircraft) error {
 	return nil
 }
 
-func getChecklistsForAircraft(aircraftID int) ([]string, error) {
+func getChecklistsForAircraft(aircraftID int) ([]LiteChecklist, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	results, err := database.DbConn.QueryContext(ctx, `SELECT title FROM checklist WHERE aircraft_id = $1`, aircraftID)
+	results, err := database.DbConn.QueryContext(ctx, `SELECT title, id FROM checklist WHERE aircraft_id = $1`, aircraftID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer results.Close()
-	checklists := make([]string, 0)
+	checklists := make([]LiteChecklist, 0)
 	for results.Next() {
-		var clName string
-		results.Scan(&clName)
-		checklists = append(checklists, clName)
+		var clist LiteChecklist
+		results.Scan(&clist.Title, &clist.ID)
+		checklists = append(checklists, clist)
 	}
 	return checklists, nil
 }
 
-func getChecklistDetailByID(checklistID int) (Checklist, error) {
+func getChecklistDetailByID(checklistID int) (*Checklist, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	result := database.DbConn.QueryRowContext(ctx, `SELECT title, items FROM checklist WHERE id = $1`, checklistID)
+	result := database.DbConn.QueryRowContext(ctx, `SELECT id, title, items, aircraft_id FROM checklist WHERE id = $1`, checklistID)
 
 	type dbChecklist struct {
 		Items string // Comes as a stringified JSON
@@ -103,16 +111,16 @@ func getChecklistDetailByID(checklistID int) (Checklist, error) {
 
 	checkListDetail := Checklist{}
 	checklist := dbChecklist{}
-	err := result.Scan(&checkListDetail.Title, &checklist.Items)
+	err := result.Scan(&checkListDetail.ID, &checkListDetail.Title, &checklist.Items, &checkListDetail.AircraftID)
 	if err != nil {
-		return Checklist{}, err
+		return &Checklist{}, err
 	}
 	err = json.Unmarshal([]byte(checklist.Items), &checkListDetail.Items)
 
 	if err != nil {
-		return Checklist{}, err
+		return &Checklist{}, err
 	}
-	return checkListDetail, nil
+	return &checkListDetail, nil
 }
 
 func addChecklist(checklist Checklist) (int, error) {
@@ -122,7 +130,7 @@ func addChecklist(checklist Checklist) (int, error) {
 	items, err := json.Marshal(checklist.Items)
 
 	var retID int
-	err = database.DbConn.QueryRowContext(ctx, `INSERT INTO checklist (title, items, aircraft_id) VALUES ($1, $2, $3) RETURNING id`, checklist.Title, items, 0).Scan(&retID)
+	err = database.DbConn.QueryRowContext(ctx, `INSERT INTO checklist (title, items, aircraft_id) VALUES ($1, $2, $3) RETURNING id`, checklist.Title, items, checklist.AircraftID).Scan(&retID)
 	if err != nil {
 		return 0, err
 	}

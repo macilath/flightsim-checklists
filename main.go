@@ -3,6 +3,7 @@ package main
 import (
 	"checklists/aircraft"
 	"checklists/database"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -20,5 +21,8 @@ const basePath = "/api"
 func main() {
 	database.SetupDatabase()
 	aircraft.SetupRoutes(basePath)
-	log.Fatal(http.ListenAndServe("localhost:8080", nil))
+	const PORT = "8080"
+	const ADDR = "localhost:" + PORT
+	fmt.Printf("Server started on port: %s\n", PORT)
+	log.Fatal(http.ListenAndServe(ADDR, nil))
 }

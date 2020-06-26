@@ -45,6 +45,13 @@ func getAircraftList() ([]Aircraft, error) {
 	for results.Next() {
 		var aircraft Aircraft
 		results.Scan(&aircraft.ID, &aircraft.Name, &aircraft.ShortName)
+		cls, err := getChecklistsForAircraft(aircraft.ID)
+		if err != nil {
+			cls = make([]LiteChecklist, 0)
+		} else if cls == nil {
+			cls = make([]LiteChecklist, 0)
+		}
+		aircraft.Checklists = cls
 		allAircraft = append(allAircraft, aircraft)
 	}
 	return allAircraft, nil

@@ -2,14 +2,7 @@
 
 Created as a way to learn Go, Flight Sim Checklists will be able to manage flight sims, their aircraft, and checklists and procedures for them.
 
-As an example: 
-DCS World
-- F18 Hornet
-    - Startup Checklist
-        - Startup Procedure
-    - Taxi Procedure (Land)
-    - Taxi Procedure (Carrier)
-    - Takeoff Checklist (Land)
-    - Takeoff Checklist (Carrier)
-
-Starting from *Creating Web Services with Go* on Pluralsight
+Still in heavy development, but here are the running instructions:
+- Start a PostgreSQL container with the schema in place
+- In `fschecklists-backend`, run the app with `go run ./main.go`
+- In `fschecklists-frontend`, start the UI with `yarn start`

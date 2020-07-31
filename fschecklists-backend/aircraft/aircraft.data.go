@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -38,6 +39,7 @@ func getAircraftList() ([]Aircraft, error) {
 	defer cancel()
 	results, err := database.DbConn.QueryContext(ctx, `SELECT id, name, alias FROM aircraft`)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	defer results.Close()

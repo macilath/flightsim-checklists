@@ -18,6 +18,7 @@ func middlewareHandler(handler http.Handler) http.Handler {
 
 const basePath = "/api"
 
+// TODO: Take ADDR, PORT from ENV
 func main() {
 	database.SetupDatabase()
 	aircraft.SetupRoutes(basePath)

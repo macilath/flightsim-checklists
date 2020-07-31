@@ -1,7 +1,8 @@
 import React from 'react';
+import Aircraft from '../Models/Aircraft';
 
 interface AircraftDetailProps {
-    aircraft: any
+    aircraft: Aircraft
     selected: boolean
     onClick: any
     onClSelected: any
@@ -13,7 +14,7 @@ export default class AircraftDetail extends React.Component<AircraftDetailProps,
             return <li onClick={() => this.props.onClSelected(cl.id)} key={cl.id}>{cl.title}</li>
         });
         return (
-            <div id={this.props.aircraft.id} onClick={this.props.onClick}>
+            <div key={this.props.aircraft.id} onClick={this.props.onClick}>
                 {this.props.selected ?
                 <div>
                     <h2>{this.props.aircraft.name}</h2>

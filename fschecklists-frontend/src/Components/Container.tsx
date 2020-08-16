@@ -2,7 +2,7 @@ import React from 'react';
 import Button from '@material-ui/core/Button';
 import Aircraft from '../Models/Aircraft';
 import { Checklist } from '../Models/Checklist';
-import AddAircraftDialog from './AddAircraftDialog';
+import AddAircraftDialog, { NewAircraft } from './AddAircraftDialog';
 import AircraftDetail from './AircraftDetail';
 import ChecklistDetail from './ChecklistDetail';
 
@@ -86,11 +86,22 @@ export default class Container extends React.Component<{}, MainContainerState> {
         });
     }
 
-    onNewAircraftSubmit(newAC: any) {
-        console.log('this was submitted', newAC);
-        // this.setState({
-        //     showAddAircraftModal: false
-        // });
+    async onNewAircraftSubmit(newAC: NewAircraft) {
+        let body: any = newAC;
+        body.id = 1000;
+        await fetch('http://localhost:8080/api/aircraft', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+        }).then(res => res.json())
+        .then((response) => {
+            console.log(response);
+            this.setState({
+                showAddAircraftModal: false
+            });
+        }).catch((e: any) => console.log(e));
     }
 
     render() {
@@ -116,7 +127,7 @@ export default class Container extends React.Component<{}, MainContainerState> {
                         <Button type='button'>Add Checklist</Button>
                     </div> : null }
                 </div>
-                <AddAircraftDialog open={this.state.showAddAircraftModal} onClose={() => this.onClose()} onSubmit={() => this.onNewAircraftSubmit('wa')} />
+                <AddAircraftDialog open={this.state.showAddAircraftModal} onClose={() => this.onClose()} onSubmit={(a: any) => this.onNewAircraftSubmit(a)} />
             </div>
         )
     }

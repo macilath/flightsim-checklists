@@ -1,13 +1,16 @@
 import React from 'react';
-import AircraftDetail from './AircraftDetail';
+import Button from '@material-ui/core/Button';
 import Aircraft from '../Models/Aircraft';
 import { Checklist } from '../Models/Checklist';
+import AddAircraftDialog from './AddAircraftDialog';
+import AircraftDetail from './AircraftDetail';
 import ChecklistDetail from './ChecklistDetail';
 
 interface MainContainerState {
     aircraft: Aircraft[],
     selectedAircraft: Aircraft | null
     activeChecklist: Checklist | null
+    showAddAircraftModal: boolean
 }
 
 const containerStyle = {
@@ -22,7 +25,8 @@ export default class Container extends React.Component<{}, MainContainerState> {
         this.state = {
             aircraft: [],
             selectedAircraft: null,
-            activeChecklist: null
+            activeChecklist: null,
+            showAddAircraftModal: false
         }
     }
 
@@ -69,6 +73,26 @@ export default class Container extends React.Component<{}, MainContainerState> {
         }
     }
 
+    openAddAircraftDialog() {
+        console.log('Opening the AddAircraft dialog');
+        this.setState({
+            showAddAircraftModal: true
+        });
+    }
+
+    onClose() {
+        this.setState({
+            showAddAircraftModal: false
+        });
+    }
+
+    onNewAircraftSubmit(newAC: any) {
+        console.log('this was submitted', newAC);
+        // this.setState({
+        //     showAddAircraftModal: false
+        // });
+    }
+
     render() {
         return (
             <div id='main-container' style={containerStyle}>
@@ -83,15 +107,16 @@ export default class Container extends React.Component<{}, MainContainerState> {
                         />
                     ))}
                     <div id='add-aircraft-btn'>
-                        <button type='button' disabled={true} >Add Aircraft</button>
+                        <Button type='button' onClick={() => this.openAddAircraftDialog()}>Add Aircraft</Button>
                     </div>
                 </div>
                 <div id='active-container'>
                     <ChecklistDetail checklist={this.state.activeChecklist} onEditClick={(chkId: number) => this.openChecklistEditor(chkId) } />
                     {this.state.selectedAircraft ? <div id='add-checklist-btn'>
-                        <button type='button'>Add Checklist</button>
+                        <Button type='button'>Add Checklist</Button>
                     </div> : null }
                 </div>
+                <AddAircraftDialog open={this.state.showAddAircraftModal} onClose={() => this.onClose()} onSubmit={() => this.onNewAircraftSubmit('wa')} />
             </div>
         )
     }

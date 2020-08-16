@@ -1,5 +1,6 @@
 import React from 'react';
 import { Checklist } from '../Models/Checklist';
+import Button from '@material-ui/core/Button'
 
 interface ChecklistProps {
     checklist: Checklist | null
@@ -15,7 +16,7 @@ export default class ChecklistDetail extends React.Component<ChecklistProps, {}>
         return (
             <div id="checklist-container">
                 <div>{title} {this.props.checklist ? 
-                    <span><hr /> <button type='button' onClick={() => this.props.onEditClick(this.props.checklist?.id)}>Edit Checklist</button></span>
+                    <span><hr /> <Button type='button' onClick={() => this.props.onEditClick(this.props.checklist?.id)}>Edit Checklist</Button></span>
                     : null}
                 </div>
                 <ul>
